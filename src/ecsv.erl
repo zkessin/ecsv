@@ -5,8 +5,8 @@
 -module(ecsv).
 -author("Nicolas R Dufour <nicolas.dufour@nemoworld.info>").
 
--export([process_csv_file_with/2, process_csv_string_with/2]).
--export([process_csv_file_with/3, process_csv_string_with/3]).
+-export([process_csv_file_with/2, process_csv_string_with/2, process_csv_stream_with/2]).
+-export([process_csv_file_with/3, process_csv_string_with/3, process_csv_stream_with/3]).
 
 %% @doc parse a csv file and process each parsed row with the RowFunction
 process_csv_file_with(IoDevice, RowFunction) ->
@@ -15,6 +15,9 @@ process_csv_file_with(IoDevice, RowFunction) ->
 %% @doc parse a csv string and process each parsed row with the RowFunction
 process_csv_string_with(String, RowFunction) ->
     process_csv_string_with(String, RowFunction, []).
+
+process_csv_stream_with(Stream, RowFunction)->
+    process_csv_stream_with(Stream, RowFunction, []).
 
 %% @doc parse a csv file and process each parsed row with the RowFunction
 %% and the initial state InitState
@@ -28,7 +31,29 @@ process_csv_string_with(String, RowFunction, RowFunctionInitState) ->
     InitState = ecsv_parser:init(RowFunction, RowFunctionInitState),
     stream_from_string(String, InitState).
 
+process_csv_stream_with(Stream, RowFunction, RowFunctionInitState)->
+    InitState = ecsv_parser:init(RowFunction, RowFunctionInitState),
+    stream_from_stream(Stream, InitState).
+
+
+
 % -----------------------------------------------------------------------------
+
+stream_from_stream(String, InitState) ->
+    StringIterator = fun("") ->
+                             receive
+                                 {chunk, Content} ->
+                                     [Head|Rest] = binary_to_list(Content),
+                                     {Head,Rest}
+                             after 5000 ->
+                                     exit(timeout)
+                             end;
+                         ([FirstChar| Tail]) ->
+                             {FirstChar, Tail}
+                     end,
+    iterate_chars(StringIterator, String, InitState).
+
+
 
 stream_from_string(String, InitState) ->
     StringIterator = fun(StringList) ->
