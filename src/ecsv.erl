@@ -44,9 +44,10 @@ stream_from_stream(String, InitState) ->
                              receive
                                  {chunk, Content} ->
                                      [Head|Rest] = binary_to_list(Content),
-                                     {Head,Rest}
-                             after 5000 ->
-                                     exit(timeout)
+                                     {Head,Rest};
+                                 eof ->
+                                     io:format("End of File",[]),
+                                     {eof,""}
                              end;
                          ([FirstChar| Tail]) ->
                              {FirstChar, Tail}
